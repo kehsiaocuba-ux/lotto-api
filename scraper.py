@@ -8,11 +8,6 @@ HEADERS = {
 }
 
 def extract_number(text):
-    """
-    Finds the first sequence of digits in a string.
-    "PB 10" -> "10"
-    "05" -> "05"
-    """
     if not text: return None
     match = re.search(r'\d+', text)
     if match:
@@ -29,25 +24,22 @@ def scrape_lottery_usa(state, game, date_str=None):
         "debug_url": ""
     }
     
+    # Ensure URL ends with slash to prevent redirects
     base_url = f"https://www.lotteryusa.com/{state.lower()}/{game.lower()}/"
     target_url = base_url
 
-    # DATE SETUP
-    search_variations = []
+    search_term = None
+    
     if date_str:
         try:
             dt_obj = datetime.strptime(date_str, "%Y-%m-%d")
-            # Point to Year Archive
-            target_url = f"{base_url}{dt_obj.year}"
+            target_url = f"{base_url}{dt_obj.year}/"
             
-            # Create variations of the date to search for
-            # 1. "Oct 25"
-            search_variations.append(dt_obj.strftime("%b %-d"))
-            search_variations.append(dt_obj.strftime("%b %d"))
-            # 2. "October 25"
-            search_variations.append(dt_obj.strftime("%B %-d"))
-            # 3. "10/25"
-            search_variations.append(dt_obj.strftime("%m/%d"))
+            # Search for "Oct 25" (Month Abbr + Day)
+            # This is the most common format on this site
+            month_str = dt_obj.strftime("%b")
+            day_str = str(dt_obj.day)
+            search_term = f"{month_str} {day_str}" 
             
         except ValueError:
             data['error'] = "Invalid date format. Use YYYY-MM-DD"
@@ -59,55 +51,63 @@ def scrape_lottery_usa(state, game, date_str=None):
         response = requests.get(target_url, headers=HEADERS, timeout=15)
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        target_row = None
+        target_container = None
         
-        # LOGIC A: HISTORY SEARCH
-        if date_str:
-            rows = soup.find_all('tr')
-            for row in rows:
-                row_txt = " ".join(row.text.split()) 
-                # Check if ANY of our variations match
-                for term in search_variations:
-                    if term in row_txt:
-                        target_row = row
-                        break
-                if target_row: break
+        # LOGIC A: HISTORY (TEXT SEARCH)
+        if date_str and search_term:
+            # 1. Find the text node containing "Oct 25"
+            # We use a regex to match "Oct 25" ignoring extra spaces
+            text_node = soup.find(string=re.compile(re.escape(search_term)))
             
-            if not target_row:
-                # DEBUG: Capture the text of the first row found to see what's wrong
-                first_row_sample = "No rows found"
-                if rows:
-                    first_row_sample = " ".join(rows[1].text.split()) if len(rows) > 1 else "Header only"
-                data['error'] = f"Date not found. Searched for {search_variations}. Page sample: [{first_row_sample}]"
+            if text_node:
+                # 2. Walk up the tree to find the row/card container
+                # Usually it's a <tr> or a <ul> or a <div>
+                # We go up 2-3 levels to ensure we capture the numbers next to the date
+                current = text_node.parent
+                for _ in range(4): # Go up 4 levels max
+                    if current.name in ['tr', 'div', 'ul', 'article']:
+                        # Check if this container actually has numbers
+                        if len(re.findall(r'\d{1,2}', current.text)) > 5:
+                            target_container = current
+                            break
+                    if current.parent:
+                        current = current.parent
+            
+            if not target_container:
+                # DEBUG: If failed, show us what the page actually starts with
+                # This helps us see if we are blocked (e.g. "Access Denied")
+                page_text_sample = soup.get_text()[:200].replace('\n', ' ')
+                data['error'] = f"Date '{search_term}' not found. Page Text Start: [{page_text_sample}]"
 
         # LOGIC B: LATEST
         else:
-            rows = soup.find_all('tr')
+            # Find first container with lots of numbers
+            rows = soup.find_all(['tr', 'ul'])
             for row in rows:
-                # Find first row with at least 3 digits in it (heuristic for numbers)
-                if len(re.findall(r'\d', row.text)) > 3:
-                    target_row = row
+                if len(re.findall(r'\d', row.text)) > 4:
+                    target_container = row
                     break
 
         # EXTRACT NUMBERS
-        if target_row:
-            # Gather all text from list items OR cells
-            # This covers both <li> structure and <td> structure
-            elements = target_row.find_all(['li', 'span', 'td'])
+        if target_container:
+            # Look for ANY element that might hold a number
+            elements = target_container.find_all(['li', 'span', 'td', 'div'])
             
             for el in elements:
-                # Don't grab the date column (usually has comma or /)
-                if ',' in el.text or '/' in el.text:
-                    continue
-                    
-                num = extract_number(el.text)
-                if num and len(num) <= 2: # Lottos are usually 2 digits max
+                # Skip elements that look like dates or text
+                txt = el.text.strip()
+                if not txt: continue
+                if ',' in txt or '/' in txt or ':' in txt: continue
+                
+                num = extract_number(txt)
+                # Filter: Must be 1-2 digits (Lotto numbers aren't 100+)
+                if num and len(num) <= 2: 
                     data['winning_numbers'].append(num)
             
-            # Deduplicate (keep order)
+            # Deduplicate
             data['winning_numbers'] = list(dict.fromkeys(data['winning_numbers']))
             
-            # FORCE LIMIT TO 6 (5 White + 1 Red)
+            # LIMIT TO 6
             if len(data['winning_numbers']) > 6:
                 data['winning_numbers'] = data['winning_numbers'][:6]
                 
