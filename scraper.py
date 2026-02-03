@@ -7,10 +7,6 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
 
-def get_state_abbr(state_name):
-    states = {"florida": "fl", "texas": "tx", "new-york": "ny", "california": "ca"}
-    return states.get(state_name.lower(), state_name[:2].lower())
-
 def extract_number(text):
     if not text: return None
     match = re.search(r'\d+', text)
@@ -22,6 +18,8 @@ def get_game_config(game_input):
     if "power" in g: return ("powerball", 6, True)
     if "mega" in g: return ("mega-millions", 6, True)
     if "cash" in g or "1000" in g: return ("cash4life", 6, True)
+    
+    # State Games
     if "floridalotto" in g or g == "lotto": return ("florida-lotto", 6, False)
     if "jackpot" in g: return ("jackpot-triple-play", 6, False)
     if "fantasy" in g: return ("fantasy-5", 5, False)
@@ -29,63 +27,8 @@ def get_game_config(game_input):
     if "pick3" in g: return ("pick-3", 3, False)
     if "pick4" in g: return ("pick-4", 4, False)
     if "pick5" in g: return ("pick-5", 5, False)
+    
     return (game_input.lower().replace(" ", "-"), 6, False)
-
-# --- GENERIC NUMBER FINDER ---
-def find_numbers_near_date(soup, date_obj, limit):
-    """
-    Searches for the date in ANY format, finds the container, and extracts numbers.
-    """
-    # Generate ALL possible date formats
-    search_terms = [
-        date_obj.strftime("%b %-d"),       # Oct 25
-        date_obj.strftime("%B %-d"),       # October 25
-        date_obj.strftime("%m/%d/%Y"),     # 10/25/2023
-        date_obj.strftime("%a, %b %-d"),   # Wed, Oct 25
-        date_obj.strftime("%A, %B %-d"),   # Wednesday, October 25
-        date_obj.strftime("%Y-%m-%d")      # 2023-10-25
-    ]
-    
-    target_container = None
-    matched_term = ""
-    
-    # 1. Text Search
-    for term in search_terms:
-        # Case insensitive search
-        el = soup.find(string=re.compile(re.escape(term), re.IGNORECASE))
-        if el:
-            matched_term = term
-            # Walk up 3 levels (Text -> Span -> Td -> Tr)
-            curr = el.parent
-            for _ in range(4):
-                if curr.name in ['tr', 'div', 'li']: 
-                    # Check if this container has numbers
-                    if len(re.findall(r'\d', curr.text)) >= limit:
-                        target_container = curr
-                        break
-                if curr.parent: curr = curr.parent
-            if target_container: break
-            
-    if not target_container:
-        return [], f"Date not found. Searched {search_terms}"
-        
-    # 2. Extract Numbers from Container
-    winning_numbers = []
-    # Find anything that looks like a ball/cell
-    elements = target_container.find_all(['li', 'span', 'td', 'div', 'b'])
-    
-    for el in elements:
-        txt = el.text.strip()
-        # Filter out junk
-        if not txt: continue
-        if any(c in txt for c in [':', '/', ',']): continue # Date parts
-        if len(txt) > 4: continue # Long text
-        if any(m in txt for m in ['Jan','Feb','Oct','Nov']): continue # Months
-        
-        num = extract_number(txt)
-        if num: winning_numbers.append(num)
-        
-    return winning_numbers, None
 
 # --- SOURCE 1: LOTTERY USA (LATEST) ---
 def scrape_latest(state, game_slug, limit):
@@ -127,49 +70,116 @@ def scrape_national_history(game_slug, date_obj, limit):
     url = f"https://www.lottery.net/{game_slug}/numbers/{date_obj.year}"
     data['debug_url'] = url
     
-    try:
-        response = requests.get(url, headers=HEADERS, timeout=10)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        nums, err = find_numbers_near_date(soup, date_obj, limit)
-        
-        if err: 
-            data['error'] = err
-        else:
-            data['winning_numbers'] = nums
-            data['winning_numbers'] = list(dict.fromkeys(data['winning_numbers']))
-            if len(data['winning_numbers']) > limit:
-                 data['winning_numbers'] = data['winning_numbers'][:limit]
-                 
-    except Exception as e:
-        data['error'] = str(e)
-    return data
-
-# --- SOURCE 3: STATE HISTORY (LOTTERY CORNER) ---
-def scrape_state_history(state, game_slug, date_obj, limit):
-    data = {"source": "lotterycorner.com", "winning_numbers": [], "debug_url": ""}
-    abbr = get_state_abbr(state)
-    url = f"https://www.lotterycorner.com/{abbr}/{game_slug}/winning-numbers/{date_obj.year}"
-    data['debug_url'] = url
+    search_terms = [
+        date_obj.strftime("%A, %B %-d, %Y"), # Tuesday, October 24, 2023
+        date_obj.strftime("%b %-d"),
+        date_obj.strftime("%B %-d")
+    ]
     
     try:
         response = requests.get(url, headers=HEADERS, timeout=10)
         soup = BeautifulSoup(response.content, 'html.parser')
-        nums, err = find_numbers_near_date(soup, date_obj, limit)
         
-        if err:
-            # Fallback: Sometimes LotteryCorner URL is different for multi-word games
-            # e.g. "pick-3" might be "pick-3" but "florida-lotto" might be "lotto"
-            # If failed, we return error, but user can tweak URL in future.
-            data['error'] = err
-        else:
-            data['winning_numbers'] = nums
-            if "pick" not in game_slug:
-                data['winning_numbers'] = list(dict.fromkeys(data['winning_numbers']))
+        target_container = None
+        for term in search_terms:
+            el = soup.find(string=re.compile(re.escape(term), re.IGNORECASE))
+            if el:
+                curr = el.parent
+                for _ in range(4):
+                    if curr.name == 'tr': 
+                        target_container = curr
+                        break
+                    if curr.parent: curr = curr.parent
+                if target_container: break
+        
+        if target_container:
+            balls = target_container.find_all(['li', 'span', 'td'])
+            for ball in balls:
+                if any(x in ball.text for x in [':', '/', ',']) or len(ball.text) > 4: continue
+                num = extract_number(ball.text)
+                if num: data['winning_numbers'].append(num)
+            
+            data['winning_numbers'] = list(dict.fromkeys(data['winning_numbers']))
             if len(data['winning_numbers']) > limit:
-                 data['winning_numbers'] = data['winning_numbers'][:limit]
-                 
+                data['winning_numbers'] = data['winning_numbers'][:limit]
+        else:
+            data['error'] = f"Date not found. Searched {search_terms}"
     except Exception as e:
         data['error'] = str(e)
+    return data
+
+# --- SOURCE 3: FLORIDA LEGACY FILES (NUCLEAR OPTION) ---
+def scrape_florida_legacy(game_slug, date_obj, limit):
+    data = {"source": "flalottery.com (Legacy Text)", "winning_numbers": [], "debug_url": ""}
+    
+    # Map game slug to Florida Legacy Code
+    legacy_map = {
+        "pick-3": "p3",
+        "pick-4": "p4",
+        "pick-5": "p5",
+        "fantasy-5": "ff",
+        "florida-lotto": "l6",
+        "jackpot-triple-play": "jtp", # Might need verification
+        "pick-2": "p2"
+    }
+    
+    code = legacy_map.get(game_slug)
+    if not code:
+        data['error'] = "Game not supported in Legacy Mode"
+        return data
+        
+    url = f"https://www.flalottery.com/exptkt/{code}.html"
+    data['debug_url'] = url
+    
+    # Florida text files usually use format: 10/21/23
+    search_date = date_obj.strftime("%m/%d/%y") # 10/24/23
+    
+    try:
+        # These are text files, not HTML, but we use requests all the same
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        
+        # Split by lines
+        lines = response.text.split('\n')
+        
+        target_line = None
+        for line in lines:
+            if search_date in line:
+                target_line = line
+                # Pick games have Midday (M) and Evening (E). 
+                # We usually want Evening (latest), which appears second usually,
+                # but let's just grab the first match for now to ensure data.
+                break
+        
+        if target_line:
+            # Format is usually: 10/24/23  1-2-3
+            # Or: 10/24/23  12-34-56-78
+            # Extract all numbers that are NOT part of the date
+            parts = target_line.split()
+            nums_found = []
+            
+            for part in parts:
+                if '/' in part: continue # Skip date
+                # Split by dashes if they exist (1-2-3)
+                if '-' in part:
+                    sub_parts = part.split('-')
+                    for sp in sub_parts:
+                        n = extract_number(sp)
+                        if n: nums_found.append(n)
+                else:
+                    n = extract_number(part)
+                    if n: nums_found.append(n)
+            
+            data['winning_numbers'] = nums_found
+            if "pick" not in game_slug:
+                 data['winning_numbers'] = list(dict.fromkeys(data['winning_numbers']))
+            if len(data['winning_numbers']) > limit:
+                 data['winning_numbers'] = data['winning_numbers'][:limit]
+        else:
+             data['error'] = f"Date {search_date} not found in Legacy File"
+             
+    except Exception as e:
+        data['error'] = f"Legacy Error: {str(e)}"
+        
     return data
 
 # --- CONTROLLER ---
@@ -180,10 +190,17 @@ def get_lotto_data(state, game, date_str=None):
     if date_str:
         try:
             dt_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            
             if is_national:
                 result = scrape_national_history(clean_slug, dt_obj, limit)
+            elif state.lower() == "florida":
+                # Use Nuclear Option for Florida
+                result = scrape_florida_legacy(clean_slug, dt_obj, limit)
             else:
-                result = scrape_state_history(state, clean_slug, dt_obj, limit)
+                # Fallback for Texas state games (future expansion)
+                data['error'] = "History not supported for this state yet"
+                return data
+                
             data.update(result)
         except ValueError: data['error'] = "Invalid format. Use YYYY-MM-DD"
     else:
