@@ -1,24 +1,23 @@
 from fastapi import FastAPI
-from scraper import get_all_lotto_data, get_florida_data, get_texas_data
+from scraper import get_florida_data, get_texas_data
+from typing import Optional
 
 app = FastAPI()
 
 @app.get("/")
 def home():
     return {
-        "message": "Lottery API is Online",
-        "usage": "Go to /api/all, /api/florida, or /api/texas"
+        "message": "Lottery API V2 is Online",
+        "endpoints": [
+            "/api/florida?date=YYYY-MM-DD",
+            "/api/texas?date=YYYY-MM-DD"
+        ]
     }
 
-@app.get("/api/all")
-def read_all():
-    # This calls the scraper immediately when requested
-    return get_all_lotto_data()
-
 @app.get("/api/florida")
-def read_florida():
-    return get_florida_data()
+def read_florida(date: Optional[str] = None):
+    return get_florida_data(date)
 
 @app.get("/api/texas")
-def read_texas():
-    return get_texas_data()
+def read_texas(date: Optional[str] = None):
+    return get_texas_data(date)
