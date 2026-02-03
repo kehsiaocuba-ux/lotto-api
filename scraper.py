@@ -7,9 +7,16 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
 
-def clean_text(text):
-    if text:
-        return text.strip().replace('\n', ' ')
+def extract_number(text):
+    """
+    Finds the first sequence of digits in a string.
+    "PB 10" -> "10"
+    "05" -> "05"
+    """
+    if not text: return None
+    match = re.search(r'\d+', text)
+    if match:
+        return match.group(0)
     return None
 
 def scrape_lottery_usa(state, game, date_str=None):
@@ -25,20 +32,22 @@ def scrape_lottery_usa(state, game, date_str=None):
     base_url = f"https://www.lotteryusa.com/{state.lower()}/{game.lower()}/"
     target_url = base_url
 
-    # SEARCH TERM PREPARATION
-    search_term = None
+    # DATE SETUP
+    search_variations = []
     if date_str:
         try:
             dt_obj = datetime.strptime(date_str, "%Y-%m-%d")
-            # 1. Go to the Year Archive
+            # Point to Year Archive
             target_url = f"{base_url}{dt_obj.year}"
             
-            # 2. Create a loose search term: "Oct 25"
-            # This avoids issues with commas, dots, or "Wednesday"
-            # %b = Oct, %d = 25 (zero padded). We strip zero padding manually just in case
-            month_str = dt_obj.strftime("%b")
-            day_str = str(dt_obj.day) # "25" or "5" (no zero)
-            search_term = f"{month_str} {day_str}" 
+            # Create variations of the date to search for
+            # 1. "Oct 25"
+            search_variations.append(dt_obj.strftime("%b %-d"))
+            search_variations.append(dt_obj.strftime("%b %d"))
+            # 2. "October 25"
+            search_variations.append(dt_obj.strftime("%B %-d"))
+            # 3. "10/25"
+            search_variations.append(dt_obj.strftime("%m/%d"))
             
         except ValueError:
             data['error'] = "Invalid date format. Use YYYY-MM-DD"
@@ -52,46 +61,53 @@ def scrape_lottery_usa(state, game, date_str=None):
         
         target_row = None
         
-        # LOGIC A: HISTORY SEARCH (Row Scanner)
-        if date_str and search_term:
-            # Look through all 'tr' (table rows) on the page
+        # LOGIC A: HISTORY SEARCH
+        if date_str:
             rows = soup.find_all('tr')
             for row in rows:
-                # cleanup row text to make matching easier
                 row_txt = " ".join(row.text.split()) 
-                
-                # Check if "Oct 25" is inside the row text
-                if search_term in row_txt:
-                    target_row = row
-                    break
+                # Check if ANY of our variations match
+                for term in search_variations:
+                    if term in row_txt:
+                        target_row = row
+                        break
+                if target_row: break
             
             if not target_row:
-                data['error'] = f"Date not found. Searched page for '{search_term}'"
+                # DEBUG: Capture the text of the first row found to see what's wrong
+                first_row_sample = "No rows found"
+                if rows:
+                    first_row_sample = " ".join(rows[1].text.split()) if len(rows) > 1 else "Header only"
+                data['error'] = f"Date not found. Searched for {search_variations}. Page sample: [{first_row_sample}]"
 
-        # LOGIC B: LATEST (First Row)
+        # LOGIC B: LATEST
         else:
-            # Find the first row that has numbers in it
             rows = soup.find_all('tr')
             for row in rows:
-                if any(char.isdigit() for char in row.text):
+                # Find first row with at least 3 digits in it (heuristic for numbers)
+                if len(re.findall(r'\d', row.text)) > 3:
                     target_row = row
                     break
 
         # EXTRACT NUMBERS
         if target_row:
-            # Find all list items (li) or spans
-            balls = target_row.find_all('li')
-            if not balls:
-                balls = target_row.find_all('span', class_=re.compile(r'ball|result'))
+            # Gather all text from list items OR cells
+            # This covers both <li> structure and <td> structure
+            elements = target_row.find_all(['li', 'span', 'td'])
             
-            for ball in balls:
-                txt = clean_text(ball.text)
-                if txt and txt.isdigit():
-                    data['winning_numbers'].append(txt)
+            for el in elements:
+                # Don't grab the date column (usually has comma or /)
+                if ',' in el.text or '/' in el.text:
+                    continue
+                    
+                num = extract_number(el.text)
+                if num and len(num) <= 2: # Lottos are usually 2 digits max
+                    data['winning_numbers'].append(num)
             
-            # --- CRITICAL FIX: LIMIT TO 6 NUMBERS ---
-            # Powerball is 5 white + 1 red. 
-            # Aggregator sites often list "Double Play" numbers next to it.
+            # Deduplicate (keep order)
+            data['winning_numbers'] = list(dict.fromkeys(data['winning_numbers']))
+            
+            # FORCE LIMIT TO 6 (5 White + 1 Red)
             if len(data['winning_numbers']) > 6:
                 data['winning_numbers'] = data['winning_numbers'][:6]
                 
