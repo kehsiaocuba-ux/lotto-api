@@ -14,14 +14,14 @@ def extract_number(text):
         return match.group(0)
     return None
 
-# --- SOURCE 1: LOTTERY USA (Best for LATEST) ---
+# --- SOURCE 1: LOTTERY USA (LATEST) ---
 def scrape_latest(state, game):
     data = {
         "source": "lotteryusa.com",
         "winning_numbers": [],
         "debug_url": ""
     }
-    
+    # Latest numbers are usually best fetched from state-specific pages on Aggregators
     url = f"https://www.lotteryusa.com/{state.lower()}/{game.lower()}/"
     data['debug_url'] = url
     
@@ -29,7 +29,6 @@ def scrape_latest(state, game):
         response = requests.get(url, headers=HEADERS, timeout=10)
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Find first row with digits
         rows = soup.find_all(['tr', 'ul'])
         target_row = None
         for row in rows:
@@ -47,7 +46,6 @@ def scrape_latest(state, game):
                 if num and len(num) <= 2: 
                     data['winning_numbers'].append(num)
 
-            # Dedupe and Limit
             data['winning_numbers'] = list(dict.fromkeys(data['winning_numbers']))
             if len(data['winning_numbers']) > 6:
                 data['winning_numbers'] = data['winning_numbers'][:6]
@@ -57,7 +55,7 @@ def scrape_latest(state, game):
         
     return data
 
-# --- SOURCE 2: LOTTERY.NET (Best for HISTORY) ---
+# --- SOURCE 2: LOTTERY.NET (HISTORY) ---
 def scrape_history(state, game, date_obj):
     data = {
         "source": "lottery.net",
@@ -65,14 +63,25 @@ def scrape_history(state, game, date_obj):
         "debug_url": ""
     }
     
-    # URL Pattern: https://www.lottery.net/florida-powerball/numbers/2023
-    url = f"https://www.lottery.net/{state.lower()}-{game.lower()}/numbers/{date_obj.year}"
+    # CRITICAL FIX: Use National URL for Powerball
+    # Powerball numbers are the same everywhere.
+    if "powerball" in game.lower():
+        url = f"https://www.lottery.net/powerball/numbers/{date_obj.year}"
+    else:
+        # Fallback for other games
+        url = f"https://www.lottery.net/{game.lower()}/numbers/{date_obj.year}"
+        
     data['debug_url'] = url
     
-    # Search Terms: "Oct 25" and "10/25"
-    month_str = date_obj.strftime("%b") # Oct
-    day_str = str(date_obj.day)         # 25
-    search_term = f"{month_str} {day_str}" 
+    # Create Search Variations
+    # 1. "Oct 25"
+    v1 = date_obj.strftime("%b %-d")
+    v2 = date_obj.strftime("%b %d")
+    # 2. "October 25" (Full Month)
+    v3 = date_obj.strftime("%B %-d")
+    v4 = date_obj.strftime("%B %d")
+    
+    search_terms = [v1, v2, v3, v4]
     
     try:
         response = requests.get(url, headers=HEADERS, timeout=10)
@@ -80,28 +89,36 @@ def scrape_history(state, game, date_obj):
         
         target_row = None
         
-        # Lottery.net uses Tables. We scan rows.
         rows = soup.find_all('tr')
         for row in rows:
-            # Normalize text to remove weird spaces
             row_txt = " ".join(row.text.split())
             
-            if search_term in row_txt:
-                target_row = row
-                break
+            # Check if any of our date variations exist in this row
+            for term in search_terms:
+                if term in row_txt:
+                    target_row = row
+                    break
+            if target_row: break
         
         if target_row:
-            # Extract numbers from this row
-            # They use <li> with class="ball" usually
-            balls = target_row.find_all(['li', 'span'])
+            # Found the date! Extract numbers.
+            # Lottery.net usually puts numbers in <li> with class "ball"
+            # But sometimes just in <td>. Let's be generic.
             
-            for ball in balls:
-                # Filter out Date column
-                if "ball" not in str(ball): 
-                     # If it's just a span without class, check if it's a number
-                     if not ball.text.strip().isdigit():
-                         continue
+            # 1. Try specific balls first
+            balls = target_row.find_all('li')
+            if not balls:
+                balls = target_row.find_all('span', class_='ball')
+            
+            # 2. Fallback to generic text extraction if no balls found
+            if not balls:
+                balls = target_row.find_all('td')
 
+            for ball in balls:
+                # Avoid the date column
+                if any(x in ball.text for x in ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']):
+                    continue
+                
                 num = extract_number(ball.text)
                 if num:
                     data['winning_numbers'].append(num)
@@ -111,7 +128,7 @@ def scrape_history(state, game, date_obj):
             if len(data['winning_numbers']) > 6:
                 data['winning_numbers'] = data['winning_numbers'][:6]
         else:
-            data['error'] = f"Date '{search_term}' not found in archive."
+            data['error'] = f"Date not found in archive. Searched for {search_terms}"
             
     except Exception as e:
         data['error'] = str(e)
@@ -127,15 +144,15 @@ def get_lotto_data(state, game, date_str=None):
     }
     
     if date_str:
-        # User wants HISTORY
         try:
             dt_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            # History Logic
             result = scrape_history(state, game, dt_obj)
             data.update(result)
         except ValueError:
             data['error'] = "Invalid format. Use YYYY-MM-DD"
     else:
-        # User wants LATEST
+        # Latest Logic
         result = scrape_latest(state, game)
         data.update(result)
         
