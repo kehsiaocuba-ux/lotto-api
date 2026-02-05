@@ -89,4 +89,75 @@ The code parses HTML using BeautifulSoup and Regex.
 Currently, the endpoint is returning [DESCRIBE ERROR].
 Please analyze the scraper.py logic considering that the source website HTML structure might have changed."
 
+# Serverless Lottery API (Hybrid Architecture)
 
+A free, robust REST API for retrieving Florida Lottery results (Latest & History).
+
+## 🚀 The Architecture: "The Hybrid Model"
+
+Traditional web scraping on serverless clouds (like Vercel/AWS) fails because lottery websites block data center IP addresses (Cloudflare, WAFs, SSL blocks).
+
+To solve this, this project uses a **Hybrid Approach**:
+
+1.  **Historical Data (Local Generation):**
+    *   We use a local Python script (`generate_data.py`) running **Playwright** (a real browser automation tool) on a local machine to scrape years of history.
+    *   This generates a static database file: `history.json`.
+    *   Since this runs locally, it passes "Human Verification" checks and Captchas easily.
+    *   This file is uploaded to Vercel.
+
+2.  **Latest Data (Live Scraping):**
+    *   For *today's* results, the API uses a lightweight scraper (`scraper.py`) targeting `LotteryUSA`, which has lower security protections and allows serverless traffic.
+
+3.  **The API (Vercel):**
+    *   The FastAPI app checks if the user wants a specific date.
+    *   **If History:** It reads from `history.json` (0ms latency, 100% reliability).
+    *   **If Latest:** It scrapes live.
+
+---
+
+## 🛠 Project Structure
+
+*   **`main.py`**: The FastAPI application entry point. Routes traffic.
+*   **`scraper.py`**: Contains the logic to scrape *Latest* results only.
+*   **`generate_data.py`**: (Local Utility) The Robot Browser that builds the database.
+*   **`history.json`**: The static database containing past results.
+*   **`requirements.txt`**: Python dependencies.
+*   **`vercel.json`**: Configuration for serverless deployment.
+
+---
+
+## 🎮 Supported Games
+
+| Game Slug | Description | Limit |
+| :--- | :--- | :--- |
+| `powerball` | National Powerball | 6 Numbers |
+| `mega-millions` | National Mega Millions | 6 Numbers |
+| `cash4life` | Cash 4 Life | 6 Numbers |
+| `florida-lotto` | Florida Lotto | 6 Numbers |
+| `jackpot-triple-play` | Jackpot Triple Play | 6 Numbers |
+| `fantasy-5` | Fantasy 5 | 5 Numbers |
+| `pick-5` | Pick 5 (Evening) | 5 Numbers |
+| `pick-4` | Pick 4 (Evening) | 4 Numbers |
+| `pick-3` | Pick 3 (Evening) | 3 Numbers |
+| `pick-2` | Pick 2 (Evening) | 2 Numbers |
+
+---
+
+## 🔌 API Endpoints
+
+### 1. Get Latest Results
+**Request:**
+`GET /api/florida/{game}`
+
+**Example:**
+`GET /api/florida/powerball`
+
+**Response:**
+```json
+{
+  "state": "FLORIDA",
+  "game": "powerball",
+  "date_requested": "Latest",
+  "source": "lotteryusa.com",
+  "winning_numbers": ["10", "20", "30", "40", "50", "05"]
+}
