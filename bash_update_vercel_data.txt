@@ -1,0 +1,7 @@
+cd ~/Documents/lotto-api
+source ~/Documents/lotto-api-v2/venv/bin/activate
+python scripts/generate_history.py
+git add data/
+git commit -m "Update lottery data"
+git push
+
