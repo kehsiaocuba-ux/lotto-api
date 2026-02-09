@@ -8,9 +8,69 @@
     "evening"
   ],
   "has_fireball": true,
-  "last_updated": "2026-02-06T13:06:48.354664Z",
-  "total_draws": 3690,
+  "last_updated": "2026-02-09T16:28:09.815970Z",
+  "total_draws": 3696,
   "draws": [
+    {
+      "date": "2026-02-08",
+      "draw_time": "midday",
+      "numbers": [
+        "9",
+        "0",
+        "8"
+      ],
+      "fireball": "6"
+    },
+    {
+      "date": "2026-02-08",
+      "draw_time": "evening",
+      "numbers": [
+        "6",
+        "7",
+        "4"
+      ],
+      "fireball": "0"
+    },
+    {
+      "date": "2026-02-07",
+      "draw_time": "midday",
+      "numbers": [
+        "9",
+        "0",
+        "2"
+      ],
+      "fireball": "7"
+    },
+    {
+      "date": "2026-02-07",
+      "draw_time": "evening",
+      "numbers": [
+        "6",
+        "0",
+        "3"
+      ],
+      "fireball": "7"
+    },
+    {
+      "date": "2026-02-06",
+      "draw_time": "midday",
+      "numbers": [
+        "2",
+        "8",
+        "4"
+      ],
+      "fireball": "2"
+    },
+    {
+      "date": "2026-02-06",
+      "draw_time": "evening",
+      "numbers": [
+        "0",
+        "5",
+        "5"
+      ],
+      "fireball": "8"
+    },
     {
       "date": "2026-02-05",
       "draw_time": "midday",
