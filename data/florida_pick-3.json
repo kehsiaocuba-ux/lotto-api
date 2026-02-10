@@ -8,9 +8,29 @@
     "evening"
   ],
   "has_fireball": true,
-  "last_updated": "2026-02-09T17:03:23.344663Z",
-  "total_draws": 3696,
+  "last_updated": "2026-02-10T14:24:04.080723Z",
+  "total_draws": 3698,
   "draws": [
+    {
+      "date": "2026-02-09",
+      "draw_time": "midday",
+      "numbers": [
+        "1",
+        "9",
+        "0"
+      ],
+      "fireball": "4"
+    },
+    {
+      "date": "2026-02-09",
+      "draw_time": "evening",
+      "numbers": [
+        "9",
+        "1",
+        "0"
+      ],
+      "fireball": "8"
+    },
     {
       "date": "2026-02-08",
       "draw_time": "midday",

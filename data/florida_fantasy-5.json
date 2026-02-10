@@ -7,9 +7,31 @@
     "midday",
     "evening"
   ],
-  "last_updated": "2026-02-09T17:04:46.332272Z",
-  "total_draws": 11970,
+  "last_updated": "2026-02-10T14:25:38.652297Z",
+  "total_draws": 11972,
   "draws": [
+    {
+      "date": "2026-02-09",
+      "draw_time": "midday",
+      "numbers": [
+        "3",
+        "7",
+        "13",
+        "14",
+        "24"
+      ]
+    },
+    {
+      "date": "2026-02-09",
+      "draw_time": "evening",
+      "numbers": [
+        "3",
+        "4",
+        "10",
+        "17",
+        "32"
+      ]
+    },
     {
       "date": "2026-02-08",
       "draw_time": "midday",

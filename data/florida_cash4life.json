@@ -7,9 +7,22 @@
     "evening"
   ],
   "has_cashball": true,
-  "last_updated": "2026-02-09T17:03:47.883295Z",
-  "total_draws": 2661,
+  "last_updated": "2026-02-10T14:24:28.603198Z",
+  "total_draws": 2662,
   "draws": [
+    {
+      "date": "2026-02-09",
+      "draw_time": "evening",
+      "numbers": [
+        "2",
+        "20",
+        "29",
+        "33",
+        "43",
+        "3"
+      ],
+      "cashball": "3"
+    },
     {
       "date": "2026-02-08",
       "draw_time": "evening",

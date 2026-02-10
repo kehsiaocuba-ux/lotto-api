@@ -1,3 +1,6 @@
+# Only games that are scraped from lottery.net
+# PDF games (pick-2, pick-3, pick-4, pick-5, cash4life) are handled separately
+
 GAMES = {
     "powerball": {
         "name": "Powerball",
@@ -30,37 +33,5 @@ GAMES = {
         "draw_times": ["evening"],
         "source_type": "lottery_net_state",
         "lottery_net_slug": "florida/fantasy-5"
-    },
-    "pick-5": {
-        "name": "Pick 5",
-        "state": "florida",
-        "numbers_count": 5,
-        "draw_times": ["midday", "evening"],
-        "source_type": "pdf",
-        "has_fireball": True
-    },
-    "pick-4": {
-        "name": "Pick 4",
-        "state": "florida",
-        "numbers_count": 4,
-        "draw_times": ["midday", "evening"],
-        "source_type": "pdf",
-        "has_fireball": True
-    },
-    "pick-3": {
-        "name": "Pick 3",
-        "state": "florida",
-        "numbers_count": 3,
-        "draw_times": ["midday", "evening"],
-        "source_type": "pdf",
-        "has_fireball": True
-    },
-    "pick-2": {
-        "name": "Pick 2",
-        "state": "florida",
-        "numbers_count": 2,
-        "draw_times": ["midday", "evening"],
-        "source_type": "pdf",
-        "has_fireball": True
     }
 }
