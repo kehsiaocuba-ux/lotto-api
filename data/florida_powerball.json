@@ -6,9 +6,45 @@
   "draw_times": [
     "evening"
   ],
-  "last_updated": "2026-02-10T14:24:40.551887Z",
-  "total_draws": 2018,
+  "last_updated": "2026-02-18T10:05:50.961039Z",
+  "total_draws": 2021,
   "draws": [
+    {
+      "date": "2026-02-16",
+      "draw_time": "evening",
+      "numbers": [
+        "16",
+        "18",
+        "19",
+        "56",
+        "58",
+        "6"
+      ]
+    },
+    {
+      "date": "2026-02-14",
+      "draw_time": "evening",
+      "numbers": [
+        "23",
+        "43",
+        "58",
+        "60",
+        "64",
+        "24"
+      ]
+    },
+    {
+      "date": "2026-02-11",
+      "draw_time": "evening",
+      "numbers": [
+        "6",
+        "20",
+        "33",
+        "40",
+        "48",
+        "5"
+      ]
+    },
     {
       "date": "2026-02-09",
       "draw_time": "evening",

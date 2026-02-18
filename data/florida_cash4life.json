@@ -7,9 +7,113 @@
     "evening"
   ],
   "has_cashball": true,
-  "last_updated": "2026-02-10T14:24:28.603198Z",
-  "total_draws": 2662,
+  "last_updated": "2026-02-18T10:05:38.725315Z",
+  "total_draws": 2670,
   "draws": [
+    {
+      "date": "2026-02-17",
+      "draw_time": "evening",
+      "numbers": [
+        "11",
+        "22",
+        "32",
+        "56",
+        "60",
+        "4"
+      ],
+      "cashball": "4"
+    },
+    {
+      "date": "2026-02-16",
+      "draw_time": "evening",
+      "numbers": [
+        "2",
+        "11",
+        "14",
+        "15",
+        "22",
+        "1"
+      ],
+      "cashball": "1"
+    },
+    {
+      "date": "2026-02-15",
+      "draw_time": "evening",
+      "numbers": [
+        "3",
+        "9",
+        "10",
+        "15",
+        "40",
+        "2"
+      ],
+      "cashball": "2"
+    },
+    {
+      "date": "2026-02-14",
+      "draw_time": "evening",
+      "numbers": [
+        "12",
+        "18",
+        "30",
+        "41",
+        "47",
+        "1"
+      ],
+      "cashball": "1"
+    },
+    {
+      "date": "2026-02-13",
+      "draw_time": "evening",
+      "numbers": [
+        "2",
+        "26",
+        "41",
+        "55",
+        "56",
+        "4"
+      ],
+      "cashball": "4"
+    },
+    {
+      "date": "2026-02-12",
+      "draw_time": "evening",
+      "numbers": [
+        "4",
+        "17",
+        "22",
+        "32",
+        "49",
+        "1"
+      ],
+      "cashball": "1"
+    },
+    {
+      "date": "2026-02-11",
+      "draw_time": "evening",
+      "numbers": [
+        "2",
+        "27",
+        "30",
+        "44",
+        "52",
+        "2"
+      ],
+      "cashball": "2"
+    },
+    {
+      "date": "2026-02-10",
+      "draw_time": "evening",
+      "numbers": [
+        "26",
+        "34",
+        "39",
+        "41",
+        "53",
+        "1"
+      ],
+      "cashball": "1"
+    },
     {
       "date": "2026-02-09",
       "draw_time": "evening",
